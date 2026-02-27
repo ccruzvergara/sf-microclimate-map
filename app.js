@@ -164,6 +164,9 @@ function normalizeNeighborhood(raw) {
   const lng = Number(payload.lng ?? payload.lon ?? payload.longitude ?? payload.locationLng ?? payload.x);
   const temp = parseTemperature(
     payload.temperature ??
+      payload.temperature?.fahrenheit ??
+      payload.temperature?.f ??
+      payload.temperature?.value ??
       payload.temp ??
       payload.tempF ??
       payload.temp_f ??
@@ -384,6 +387,12 @@ async function fetchAllWeather() {
         items = raw.data;
       } else if (raw && typeof raw === "object" && Array.isArray(raw.weather)) {
         items = raw.weather;
+      } else if (raw && typeof raw === "object") {
+        items = Object.entries(raw).map(([key, value]) => ({
+          key,
+          neighborhood: value?.name || key,
+          ...(typeof value === "object" ? value : { temperature: value }),
+        }));
       }
       if (items.length) {
         indexWeatherItems(items);
@@ -474,16 +483,37 @@ function enrichNeighborhoodsWithIndexedWeather(items) {
   });
 }
 
-function applyFilters() {
+async function hydrateNeighborhoodTemperatures() {
+  const missing = neighborhoods.filter((n) => !Number.isFinite(n.temperature));
+  if (!missing.length) return;
+
+  const hydrated = await Promise.all(
+    neighborhoods.map(async (n) => {
+      if (Number.isFinite(n.temperature)) return n;
+      return withFreshWeather(n);
+    })
+  );
+
+  neighborhoods = hydrated;
+}
+
+async function applyFilters() {
   const sunnyWarmOnly = Boolean(ui.sunnyWarmToggle.checked);
 
-  const filtered = sunnyWarmOnly
+  let filtered = sunnyWarmOnly
     ? getTopSunnyWarmNeighborhoods(neighborhoods, 10)
     : [...neighborhoods].sort((a, b) => {
         const aTemp = Number.isFinite(a.temperature) ? a.temperature : -999;
         const bTemp = Number.isFinite(b.temperature) ? b.temperature : -999;
         return bTemp - aTemp;
       });
+
+  if (sunnyWarmOnly && filtered.length === 0) {
+    await fetchAllWeather();
+    neighborhoods = enrichNeighborhoodsWithIndexedWeather(neighborhoods);
+    await hydrateNeighborhoodTemperatures();
+    filtered = getTopSunnyWarmNeighborhoods(neighborhoods, 10);
+  }
 
   filteredNeighborhoods = filtered;
   drawMarkers(filtered);
@@ -556,7 +586,7 @@ async function refresh() {
     const items = await fetchNeighborhoods();
     await fetchAllWeather();
     neighborhoods = enrichNeighborhoodsWithIndexedWeather(items);
-    applyFilters();
+    await applyFilters();
 
     if (neighborhoods.length) {
       const withWeather = await withFreshWeather(neighborhoods[0]);
@@ -604,7 +634,9 @@ map.on("click", async (event) => {
 });
 
 ui.refreshBtn.addEventListener("click", refresh);
-ui.searchBtn.addEventListener("click", applyFilters);
+ui.searchBtn.addEventListener("click", async () => {
+  await applyFilters();
+});
 ui.finderResults.addEventListener("click", async (event) => {
   const btn = event.target.closest(".result-btn");
   if (!btn) return;
