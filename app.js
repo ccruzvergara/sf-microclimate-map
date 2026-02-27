@@ -304,21 +304,41 @@ async function fetchNeighborhoods() {
     throw new Error(`API error: ${response.status}`);
   }
 
+  const withCentroid = (item, fallbackKey = "") => {
+    const keyCandidate =
+      item?.key ||
+      item?.neighborhood_key ||
+      item?.slug ||
+      fallbackKey ||
+      slugifyNeighborhood(item?.name || item?.neighborhood || "");
+    const centroid = NEIGHBORHOOD_CENTROIDS[keyCandidate];
+    return {
+      ...item,
+      key: keyCandidate || item?.key || "",
+      lat: Number.isFinite(Number(item?.lat)) ? Number(item.lat) : (centroid ? centroid[0] : item?.lat),
+      lng: Number.isFinite(Number(item?.lng))
+        ? Number(item.lng)
+        : (centroid ? centroid[1] : (item?.lng ?? item?.lon ?? item?.longitude)),
+    };
+  };
+
   const json = await response.json();
   let rawItems = [];
   if (Array.isArray(json)) {
-    rawItems = json;
+    rawItems = json.map((item) => withCentroid(item));
   } else if (Array.isArray(json.neighborhoods)) {
-    rawItems = json.neighborhoods.map((item) => {
-      const c = NEIGHBORHOOD_CENTROIDS[item.key];
-      return {
-        ...item,
-        lat: c ? c[0] : item.lat,
-        lng: c ? c[1] : item.lng,
-      };
-    });
+    rawItems = json.neighborhoods.map((item) => withCentroid(item));
   } else if (json && typeof json === "object") {
-    rawItems = Object.entries(json).map(([name, value]) => ({ name, ...value }));
+    rawItems = Object.entries(json).map(([name, value]) =>
+      withCentroid(
+        {
+          name: value?.name || name,
+          neighborhood: value?.neighborhood || name,
+          ...(typeof value === "object" ? value : { temperature: value }),
+        },
+        name
+      )
+    );
   }
 
   const parsed = rawItems.map(normalizeNeighborhood);
