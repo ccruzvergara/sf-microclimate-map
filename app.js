@@ -57,7 +57,9 @@ const NEIGHBORHOOD_CENTROIDS = {
 const ui = {
   search: document.getElementById("neighborhood-search"),
   sunnyWarmToggle: document.getElementById("sunny-warm-toggle"),
+  searchBtn: document.getElementById("finder-search-btn"),
   filterCount: document.getElementById("filter-count"),
+  finderResults: document.getElementById("finder-results"),
   clearFiltersBtn: document.getElementById("clear-filters-btn"),
   name: document.getElementById("selected-name"),
   temp: document.getElementById("selected-temp"),
@@ -83,6 +85,7 @@ const markersLayer = L.layerGroup().addTo(map);
 let neighborhoods = [];
 let markerByNeighborhood = new Map();
 let weatherIndex = new Map();
+let filteredNeighborhoods = [];
 
 function formatTemp(temp) {
   return Number.isFinite(temp) ? `${Math.round(temp)}°F` : "--";
@@ -462,6 +465,13 @@ function applyFilters() {
     return Number.isFinite(n.temperature) && n.temperature >= 68 && isSunnyCondition(n.condition);
   });
 
+  filtered.sort((a, b) => {
+    const aTemp = Number.isFinite(a.temperature) ? a.temperature : -999;
+    const bTemp = Number.isFinite(b.temperature) ? b.temperature : -999;
+    return bTemp - aTemp;
+  });
+
+  filteredNeighborhoods = filtered;
   drawMarkers(filtered);
   if (filtered.length) {
     fitMap(filtered);
@@ -470,6 +480,22 @@ function applyFilters() {
   ui.filterCount.textContent = sunnyWarmOnly || query
     ? `${filtered.length} neighborhood${filtered.length === 1 ? "" : "s"} match`
     : "Showing all neighborhoods";
+
+  renderFinderResults(filtered);
+}
+
+function renderFinderResults(items) {
+  if (!items.length) {
+    ui.finderResults.innerHTML = "<li>No neighborhoods match this search/filter.</li>";
+    return;
+  }
+
+  ui.finderResults.innerHTML = items
+    .map((n) => {
+      const temp = Number.isFinite(n.temperature) ? `${Math.round(n.temperature)}°F` : "--";
+      return `<li><button class="result-btn" data-neighborhood="${n.name}">${n.name}</button><span class="temp">${temp}</span></li>`;
+    })
+    .join("");
 }
 
 function drawMarkers(items) {
@@ -533,7 +559,8 @@ async function refresh() {
 
 map.on("click", async (event) => {
   const { lat, lng } = event.latlng;
-  if (!neighborhoods.length) {
+  const sourceSet = filteredNeighborhoods.length ? filteredNeighborhoods : neighborhoods;
+  if (!sourceSet.length) {
     ui.name.textContent = "No neighborhood match";
     ui.temp.textContent = "--";
     ui.tempUnit.textContent = "";
@@ -544,7 +571,18 @@ map.on("click", async (event) => {
     return;
   }
 
-  const nearest = findNearestNeighborhood(lat, lng);
+  const nearest = (() => {
+    let nearestItem = sourceSet[0];
+    let minDist = distanceSq(lat, lng, nearestItem.lat, nearestItem.lng);
+    for (const n of sourceSet) {
+      const d = distanceSq(lat, lng, n.lat, n.lng);
+      if (d < minDist) {
+        nearestItem = n;
+        minDist = d;
+      }
+    }
+    return nearestItem;
+  })();
   if (!nearest) return;
 
   const withWeather = await withFreshWeather(nearest);
@@ -552,11 +590,29 @@ map.on("click", async (event) => {
 });
 
 ui.refreshBtn.addEventListener("click", refresh);
-ui.search.addEventListener("input", applyFilters);
-ui.sunnyWarmToggle.addEventListener("change", applyFilters);
+ui.searchBtn.addEventListener("click", applyFilters);
+ui.search.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") applyFilters();
+});
+ui.finderResults.addEventListener("click", async (event) => {
+  const btn = event.target.closest(".result-btn");
+  if (!btn) return;
+  const picked = filteredNeighborhoods.find((n) => n.name === btn.dataset.neighborhood);
+  if (!picked) return;
+  const withWeather = await withFreshWeather(picked);
+  selectNeighborhood(withWeather);
+});
 ui.clearFiltersBtn.addEventListener("click", () => {
   ui.search.value = "";
   ui.sunnyWarmToggle.checked = false;
-  applyFilters();
+  filteredNeighborhoods = [...neighborhoods].sort((a, b) => {
+    const aTemp = Number.isFinite(a.temperature) ? a.temperature : -999;
+    const bTemp = Number.isFinite(b.temperature) ? b.temperature : -999;
+    return bTemp - aTemp;
+  });
+  drawMarkers(neighborhoods);
+  fitMap(neighborhoods);
+  ui.filterCount.textContent = "Showing all neighborhoods";
+  renderFinderResults(filteredNeighborhoods);
 });
 refresh();
