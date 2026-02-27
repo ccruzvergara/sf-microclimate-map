@@ -151,7 +151,7 @@ function normalizeNeighborhood(raw) {
       lat: NaN,
       lng: NaN,
       temperature: NaN,
-      condition: "Condition unavailable",
+      condition: "",
     };
   }
 
@@ -185,7 +185,7 @@ function normalizeNeighborhood(raw) {
       payload.description ||
       payload.summary ||
       (typeof payload.weather === "string" ? payload.weather : "") ||
-      "Condition unavailable",
+      "",
   };
 }
 
@@ -252,7 +252,7 @@ function renderNeighborhoodCard(data) {
   const hasTemp = Number.isFinite(data.temperature);
   ui.temp.textContent = hasTemp ? Math.round(data.temperature) : "--";
   ui.tempUnit.textContent = hasTemp ? "°F" : "";
-  ui.condition.textContent = data.condition || "Condition unavailable";
+  ui.condition.textContent = data.condition || "";
   ui.coords.textContent = Number.isFinite(data.lat) && Number.isFinite(data.lng)
     ? `${data.lat.toFixed(4)}, ${data.lng.toFixed(4)}`
     : "--";
@@ -396,7 +396,7 @@ async function withFreshWeather(base) {
       ...weather,
       temperature: Number.isFinite(weather.temperature) ? weather.temperature : base.temperature,
       condition:
-        weather.condition && weather.condition !== "Condition unavailable"
+        weather.condition
           ? weather.condition
           : base.condition,
     };
@@ -409,7 +409,7 @@ async function withFreshWeather(base) {
         name: base.name,
         temperature: fallback.temperature,
         condition:
-          fallback.condition && fallback.condition !== "Condition unavailable"
+          fallback.condition
             ? fallback.condition
             : base.condition,
       };
@@ -429,8 +429,14 @@ function drawMarkers(items) {
       color: "#0b3c49",
       fillColor: "#1d8a95",
       fillOpacity: 0.9,
-    })
-      .bindPopup(`<strong>${n.name}</strong><br>${formatTemp(n.temperature)}<br>${n.condition}`)
+    });
+
+    const popupText = n.condition
+      ? `<strong>${n.name}</strong><br>${formatTemp(n.temperature)}<br>${n.condition}`
+      : `<strong>${n.name}</strong><br>${formatTemp(n.temperature)}`;
+
+    marker
+      .bindPopup(popupText)
       .on("click", async () => {
         const withWeather = await withFreshWeather(n);
         selectNeighborhood(withWeather);
