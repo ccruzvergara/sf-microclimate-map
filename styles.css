@@ -70,16 +70,6 @@ body {
   background: rgba(255, 255, 255, 0.5);
 }
 
-#neighborhood-search {
-  width: 100%;
-  padding: 0.55rem 0.65rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  margin-top: 0.35rem;
-  margin-bottom: 0.55rem;
-  font: inherit;
-}
-
 .finder-toggle {
   display: flex;
   align-items: center;
@@ -109,19 +99,6 @@ body {
 
 #finder-search-btn:hover {
   filter: brightness(1.05);
-}
-
-#clear-filters-btn {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.38rem 0.7rem;
-  background: #fff;
-  color: var(--ink);
-  cursor: pointer;
-}
-
-#clear-filters-btn:hover {
-  border-color: var(--accent);
 }
 
 #filter-count {

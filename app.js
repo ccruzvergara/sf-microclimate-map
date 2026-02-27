@@ -55,12 +55,10 @@ const NEIGHBORHOOD_CENTROIDS = {
 };
 
 const ui = {
-  search: document.getElementById("neighborhood-search"),
   sunnyWarmToggle: document.getElementById("sunny-warm-toggle"),
   searchBtn: document.getElementById("finder-search-btn"),
   filterCount: document.getElementById("filter-count"),
   finderResults: document.getElementById("finder-results"),
-  clearFiltersBtn: document.getElementById("clear-filters-btn"),
   name: document.getElementById("selected-name"),
   temp: document.getElementById("selected-temp"),
   tempUnit: document.getElementById("temp-unit"),
@@ -455,12 +453,9 @@ function enrichNeighborhoodsWithIndexedWeather(items) {
 }
 
 function applyFilters() {
-  const query = String(ui.search.value || "").trim().toLowerCase();
   const sunnyWarmOnly = Boolean(ui.sunnyWarmToggle.checked);
 
   const filtered = neighborhoods.filter((n) => {
-    const matchesQuery = !query || String(n.name || "").toLowerCase().includes(query);
-    if (!matchesQuery) return false;
     if (!sunnyWarmOnly) return true;
     return Number.isFinite(n.temperature) && n.temperature >= 68 && isSunnyCondition(n.condition);
   });
@@ -477,8 +472,8 @@ function applyFilters() {
     fitMap(filtered);
   }
 
-  ui.filterCount.textContent = sunnyWarmOnly || query
-    ? `${filtered.length} neighborhood${filtered.length === 1 ? "" : "s"} match`
+  ui.filterCount.textContent = sunnyWarmOnly
+    ? `${filtered.length} warm sunny neighborhood${filtered.length === 1 ? "" : "s"}`
     : "Showing all neighborhoods";
 
   renderFinderResults(filtered);
@@ -591,9 +586,6 @@ map.on("click", async (event) => {
 
 ui.refreshBtn.addEventListener("click", refresh);
 ui.searchBtn.addEventListener("click", applyFilters);
-ui.search.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") applyFilters();
-});
 ui.finderResults.addEventListener("click", async (event) => {
   const btn = event.target.closest(".result-btn");
   if (!btn) return;
@@ -601,18 +593,5 @@ ui.finderResults.addEventListener("click", async (event) => {
   if (!picked) return;
   const withWeather = await withFreshWeather(picked);
   selectNeighborhood(withWeather);
-});
-ui.clearFiltersBtn.addEventListener("click", () => {
-  ui.search.value = "";
-  ui.sunnyWarmToggle.checked = false;
-  filteredNeighborhoods = [...neighborhoods].sort((a, b) => {
-    const aTemp = Number.isFinite(a.temperature) ? a.temperature : -999;
-    const bTemp = Number.isFinite(b.temperature) ? b.temperature : -999;
-    return bTemp - aTemp;
-  });
-  drawMarkers(neighborhoods);
-  fitMap(neighborhoods);
-  ui.filterCount.textContent = "Showing all neighborhoods";
-  renderFinderResults(filteredNeighborhoods);
 });
 refresh();
