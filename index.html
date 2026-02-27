@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SF Microclimate Map</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="app-header">
+        <h1>San Francisco Microclimate Map</h1>
+        <p>Click a marker or anywhere on the map to see what to wear right now.</p>
+      </header>
+
+      <section class="layout">
+        <div id="map" aria-label="Map of San Francisco neighborhoods"></div>
+
+        <aside class="panel" aria-live="polite">
+          <h2 id="selected-name">Pick a neighborhood</h2>
+          <p class="temperature"><span id="selected-temp">--</span><span id="temp-unit">°F</span></p>
+          <p id="selected-condition">Current conditions will appear here.</p>
+
+          <div class="meta-grid">
+            <div>
+              <span class="label">Coordinates</span>
+              <span id="selected-coords">--</span>
+            </div>
+            <div>
+              <span class="label">Last updated</span>
+              <span id="selected-updated">--</span>
+            </div>
+          </div>
+
+          <h3>What to wear / pack</h3>
+          <ul id="packing-list" class="packing-list">
+            <li>Select a neighborhood to get recommendations.</li>
+          </ul>
+
+          <button id="refresh-btn" type="button">Refresh live temperatures</button>
+          <p class="note">
+            Data source:
+            <a href="https://microclimates.solofounders.com/" target="_blank" rel="noreferrer">microclimates.solofounders.com</a>
+          </p>
+        </aside>
+      </section>
+    </main>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="app.js"></script>
+  </body>
+</html>
