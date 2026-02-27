@@ -215,43 +215,33 @@ function packSuggestions(tempF, condition) {
   }
 
   const c = (condition || "").toLowerCase();
-  const isSunny = c.includes("sunny") || c.includes("clear");
-  const isFoggyOrPartlyCloudy =
-    c.includes("fog") || c.includes("mist") || c.includes("partly cloudy") || c.includes("cloud");
   const isWindy = c.includes("wind");
+  const isRainy = c.includes("rain") || c.includes("drizzle");
 
   const items = [];
 
-  if (tempF < 60) {
-    items.push("Warm coat");
-  } else if (tempF >= 60 && tempF < 65) {
-    if (isFoggyOrPartlyCloudy) {
-      items.push("Warm sweater", "Jacket");
-    } else {
-      items.push("Long sleeves", "Light jacket");
-    }
-  } else if (tempF >= 65 && tempF < 70) {
-    if (isFoggyOrPartlyCloudy) {
-      items.push("Long sleeves", "Maybe a light sweater");
-    } else {
-      items.push("Long sleeves", "Light sweater");
-    }
-  } else if (tempF >= 70) {
-    if (isSunny) {
-      items.push("Short sleeves", "Bring a light jacket");
-    } else {
-      items.push("Short sleeves", "Light jacket");
-    }
+  if (tempF < 40) {
+    items.push("Stay inside, wear your pj's, why go out?");
+  } else if (tempF >= 40 && tempF <= 50) {
+    items.push("Bundle up, wear a warm coat, if you're a true san franciscan, you'll have your canada goose :)");
+  } else if (tempF >= 51 && tempF <= 60) {
+    items.push("Layers layers layers, you need a jacket, warm sweater, and t-shirt!");
+  } else if (tempF >= 61 && tempF <= 65) {
+    items.push("Almost warm, bring out the sunnies!");
+  } else if (tempF >= 66 && tempF <= 72) {
+    items.push("Lucky to live in SF, we have the perfect weather. Wear what you want!");
+  } else if (tempF >= 73) {
+    items.push("It's hot, what's happening? Pull out the tank and shorts for this unseasonably warm day.");
   } else {
-    items.push("Long sleeves", "Light layer");
+    items.push("Bring a light layer.");
   }
 
   if (isWindy) {
-    items.push("Coat with a hood or tie your hair back");
+    items.push("Don't forget your hairtie! Maybe a hoodie too.");
   }
 
-  if (c.includes("rain") || c.includes("drizzle")) {
-    items.push("Umbrella or rain shell");
+  if (isRainy) {
+    items.push("Raincoat or the true SF staple, a patagonia jacket.");
   }
 
   return [...new Set(items)];
