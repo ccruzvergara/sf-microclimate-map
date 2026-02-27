@@ -23,6 +23,24 @@
         <div id="map" aria-label="Map of San Francisco neighborhoods"></div>
 
         <aside class="panel" aria-live="polite">
+          <div class="finder">
+            <label for="neighborhood-search" class="label">Find Neighborhoods</label>
+            <input
+              id="neighborhood-search"
+              type="search"
+              placeholder="Search (e.g. Mission, Sunset)"
+              autocomplete="off"
+            />
+            <label class="finder-toggle">
+              <input id="sunny-warm-toggle" type="checkbox" />
+              Sunny + warm spots (68°F or warmer)
+            </label>
+            <div class="finder-row">
+              <span id="filter-count">Showing all neighborhoods</span>
+              <button id="clear-filters-btn" type="button">Clear</button>
+            </div>
+          </div>
+
           <h2 id="selected-name">Pick a neighborhood</h2>
           <p class="temperature"><span id="selected-temp">--</span><span id="temp-unit">°F</span></p>
           <p id="selected-condition">Current conditions will appear here.</p>

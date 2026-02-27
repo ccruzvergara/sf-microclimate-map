@@ -55,6 +55,10 @@ const NEIGHBORHOOD_CENTROIDS = {
 };
 
 const ui = {
+  search: document.getElementById("neighborhood-search"),
+  sunnyWarmToggle: document.getElementById("sunny-warm-toggle"),
+  filterCount: document.getElementById("filter-count"),
+  clearFiltersBtn: document.getElementById("clear-filters-btn"),
   name: document.getElementById("selected-name"),
   temp: document.getElementById("selected-temp"),
   tempUnit: document.getElementById("temp-unit"),
@@ -247,6 +251,11 @@ function packSuggestions(tempF, condition) {
   return [...new Set(items)];
 }
 
+function isSunnyCondition(condition) {
+  const c = String(condition || "").toLowerCase();
+  return c.includes("sunny") || c.includes("clear");
+}
+
 function renderNeighborhoodCard(data) {
   ui.name.textContent = data.name;
   const hasTemp = Number.isFinite(data.temperature);
@@ -322,6 +331,9 @@ function indexWeatherItems(items) {
   for (const item of items) {
     const normalized = normalizeNeighborhood(item);
     if (!Number.isFinite(normalized.temperature)) continue;
+    if (normalized.key) {
+      weatherIndex.set(normalizeName(normalized.key), normalized);
+    }
     const keys = neighborhoodCandidates(normalized.name);
     for (const key of keys) {
       weatherIndex.set(normalizeName(key), normalized);
@@ -418,6 +430,42 @@ async function withFreshWeather(base) {
   }
 }
 
+function enrichNeighborhoodsWithIndexedWeather(items) {
+  return items.map((n) => {
+    const byKey = n.key ? weatherIndex.get(normalizeName(n.key)) : null;
+    const byName = weatherIndex.get(normalizeName(n.name));
+    const wx = byKey || byName;
+    if (!wx) return n;
+
+    return {
+      ...n,
+      temperature: Number.isFinite(wx.temperature) ? wx.temperature : n.temperature,
+      condition: wx.condition || n.condition,
+    };
+  });
+}
+
+function applyFilters() {
+  const query = String(ui.search.value || "").trim().toLowerCase();
+  const sunnyWarmOnly = Boolean(ui.sunnyWarmToggle.checked);
+
+  const filtered = neighborhoods.filter((n) => {
+    const matchesQuery = !query || String(n.name || "").toLowerCase().includes(query);
+    if (!matchesQuery) return false;
+    if (!sunnyWarmOnly) return true;
+    return Number.isFinite(n.temperature) && n.temperature >= 68 && isSunnyCondition(n.condition);
+  });
+
+  drawMarkers(filtered);
+  if (filtered.length) {
+    fitMap(filtered);
+  }
+
+  ui.filterCount.textContent = sunnyWarmOnly || query
+    ? `${filtered.length} neighborhood${filtered.length === 1 ? "" : "s"} match`
+    : "Showing all neighborhoods";
+}
+
 function drawMarkers(items) {
   markersLayer.clearLayers();
   markerByNeighborhood = new Map();
@@ -461,11 +509,11 @@ async function refresh() {
   try {
     const items = await fetchNeighborhoods();
     await fetchAllWeather();
-    drawMarkers(items);
-    fitMap(items);
+    neighborhoods = enrichNeighborhoodsWithIndexedWeather(items);
+    applyFilters();
 
-    if (items.length) {
-      const withWeather = await withFreshWeather(items[0]);
+    if (neighborhoods.length) {
+      const withWeather = await withFreshWeather(neighborhoods[0]);
       selectNeighborhood(withWeather);
     }
   } catch (error) {
@@ -498,4 +546,11 @@ map.on("click", async (event) => {
 });
 
 ui.refreshBtn.addEventListener("click", refresh);
+ui.search.addEventListener("input", applyFilters);
+ui.sunnyWarmToggle.addEventListener("change", applyFilters);
+ui.clearFiltersBtn.addEventListener("click", () => {
+  ui.search.value = "";
+  ui.sunnyWarmToggle.checked = false;
+  applyFilters();
+});
 refresh();
