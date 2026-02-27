@@ -159,9 +159,6 @@ function normalizeNeighborhood(raw) {
   const lng = Number(payload.lng ?? payload.lon ?? payload.longitude ?? payload.locationLng ?? payload.x);
   const temp = parseTemperature(
     payload.temperature ??
-      payload.temperature?.fahrenheit ??
-      payload.temperature?.f ??
-      payload.temperature?.value ??
       payload.temp ??
       payload.tempF ??
       payload.temp_f ??
@@ -185,10 +182,6 @@ function normalizeNeighborhood(raw) {
     condition:
       payload.condition ||
       payload.conditions ||
-      payload.weather_condition ||
-      payload.weatherCondition ||
-      payload.sky ||
-      payload.forecast ||
       payload.description ||
       payload.summary ||
       (typeof payload.weather === "string" ? payload.weather : "") ||
@@ -355,9 +348,6 @@ function indexWeatherItems(items) {
   for (const item of items) {
     const normalized = normalizeNeighborhood(item);
     if (!Number.isFinite(normalized.temperature)) continue;
-    if (normalized.key) {
-      weatherIndex.set(normalizeName(normalized.key), normalized);
-    }
     const keys = neighborhoodCandidates(normalized.name);
     for (const key of keys) {
       weatherIndex.set(normalizeName(key), normalized);
@@ -379,12 +369,6 @@ async function fetchAllWeather() {
         items = raw.data;
       } else if (raw && typeof raw === "object" && Array.isArray(raw.weather)) {
         items = raw.weather;
-      } else if (raw && typeof raw === "object") {
-        items = Object.entries(raw).map(([key, value]) => ({
-          key,
-          neighborhood: value?.name || key,
-          ...(typeof value === "object" ? value : { temperature: value }),
-        }));
       }
       if (items.length) {
         indexWeatherItems(items);
@@ -460,35 +444,6 @@ async function withFreshWeather(base) {
   }
 }
 
-function enrichNeighborhoodsWithIndexedWeather(items) {
-  return items.map((n) => {
-    const byKey = n.key ? weatherIndex.get(normalizeName(n.key)) : null;
-    const byName = weatherIndex.get(normalizeName(n.name));
-    const wx = byKey || byName;
-    if (!wx) return n;
-
-    return {
-      ...n,
-      temperature: Number.isFinite(wx.temperature) ? wx.temperature : n.temperature,
-      condition: wx.condition || n.condition,
-    };
-  });
-}
-
-async function hydrateNeighborhoodTemperatures() {
-  const missing = neighborhoods.filter((n) => !Number.isFinite(n.temperature));
-  if (!missing.length) return;
-
-  const hydrated = await Promise.all(
-    neighborhoods.map(async (n) => {
-      if (Number.isFinite(n.temperature)) return n;
-      return withFreshWeather(n);
-    })
-  );
-
-  neighborhoods = hydrated;
-}
-
 function drawMarkers(items) {
   markersLayer.clearLayers();
   markerByNeighborhood = new Map();
@@ -532,13 +487,11 @@ async function refresh() {
   try {
     const items = await fetchNeighborhoods();
     await fetchAllWeather();
-    neighborhoods = enrichNeighborhoodsWithIndexedWeather(items);
-    await hydrateNeighborhoodTemperatures();
-    drawMarkers(neighborhoods);
-    fitMap(neighborhoods);
+    drawMarkers(items);
+    fitMap(items);
 
-    if (neighborhoods.length) {
-      const withWeather = await withFreshWeather(neighborhoods[0]);
+    if (items.length) {
+      const withWeather = await withFreshWeather(items[0]);
       selectNeighborhood(withWeather);
     }
   } catch (error) {
@@ -563,18 +516,7 @@ map.on("click", async (event) => {
     return;
   }
 
-  const nearest = (() => {
-    let nearestItem = neighborhoods[0];
-    let minDist = distanceSq(lat, lng, nearestItem.lat, nearestItem.lng);
-    for (const n of neighborhoods) {
-      const d = distanceSq(lat, lng, n.lat, n.lng);
-      if (d < minDist) {
-        nearestItem = n;
-        minDist = d;
-      }
-    }
-    return nearestItem;
-  })();
+  const nearest = findNearestNeighborhood(lat, lng);
   if (!nearest) return;
 
   const withWeather = await withFreshWeather(nearest);
