@@ -187,6 +187,10 @@ function normalizeNeighborhood(raw) {
     condition:
       payload.condition ||
       payload.conditions ||
+      payload.weather_condition ||
+      payload.weatherCondition ||
+      payload.sky ||
+      payload.forecast ||
       payload.description ||
       payload.summary ||
       (typeof payload.weather === "string" ? payload.weather : "") ||
@@ -260,7 +264,25 @@ function packSuggestions(tempF, condition) {
 
 function isSunnyCondition(condition) {
   const c = String(condition || "").toLowerCase();
-  return c.includes("sunny") || c.includes("clear");
+  return c.includes("sunny") || c.includes("clear") || c.includes("sun");
+}
+
+function sunnyScore(condition) {
+  const c = String(condition || "").toLowerCase();
+  if (c.includes("sunny") || c.includes("clear")) return 2;
+  if (c.includes("partly")) return 1;
+  return 0;
+}
+
+function getTopSunnyWarmNeighborhoods(items, limit = 10) {
+  return items
+    .filter((n) => Number.isFinite(n.temperature) && n.temperature >= 68)
+    .sort((a, b) => {
+      const sunDiff = sunnyScore(b.condition) - sunnyScore(a.condition);
+      if (sunDiff !== 0) return sunDiff;
+      return b.temperature - a.temperature;
+    })
+    .slice(0, limit);
 }
 
 function renderNeighborhoodCard(data) {
@@ -455,16 +477,13 @@ function enrichNeighborhoodsWithIndexedWeather(items) {
 function applyFilters() {
   const sunnyWarmOnly = Boolean(ui.sunnyWarmToggle.checked);
 
-  const filtered = neighborhoods.filter((n) => {
-    if (!sunnyWarmOnly) return true;
-    return Number.isFinite(n.temperature) && n.temperature >= 68 && isSunnyCondition(n.condition);
-  });
-
-  filtered.sort((a, b) => {
-    const aTemp = Number.isFinite(a.temperature) ? a.temperature : -999;
-    const bTemp = Number.isFinite(b.temperature) ? b.temperature : -999;
-    return bTemp - aTemp;
-  });
+  const filtered = sunnyWarmOnly
+    ? getTopSunnyWarmNeighborhoods(neighborhoods, 10)
+    : [...neighborhoods].sort((a, b) => {
+        const aTemp = Number.isFinite(a.temperature) ? a.temperature : -999;
+        const bTemp = Number.isFinite(b.temperature) ? b.temperature : -999;
+        return bTemp - aTemp;
+      });
 
   filteredNeighborhoods = filtered;
   drawMarkers(filtered);
@@ -473,7 +492,7 @@ function applyFilters() {
   }
 
   ui.filterCount.textContent = sunnyWarmOnly
-    ? `${filtered.length} warm sunny neighborhood${filtered.length === 1 ? "" : "s"}`
+    ? `Top ${filtered.length} sunny + warm neighborhoods (68°F+)`
     : "Showing all neighborhoods";
 
   renderFinderResults(filtered);
