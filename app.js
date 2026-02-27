@@ -55,10 +55,6 @@ const NEIGHBORHOOD_CENTROIDS = {
 };
 
 const ui = {
-  sunnyWarmToggle: document.getElementById("sunny-warm-toggle"),
-  searchBtn: document.getElementById("finder-search-btn"),
-  filterCount: document.getElementById("filter-count"),
-  finderResults: document.getElementById("finder-results"),
   name: document.getElementById("selected-name"),
   temp: document.getElementById("selected-temp"),
   tempUnit: document.getElementById("temp-unit"),
@@ -83,7 +79,6 @@ const markersLayer = L.layerGroup().addTo(map);
 let neighborhoods = [];
 let markerByNeighborhood = new Map();
 let weatherIndex = new Map();
-let filteredNeighborhoods = [];
 
 function formatTemp(temp) {
   return Number.isFinite(temp) ? `${Math.round(temp)}°F` : "--";
@@ -263,29 +258,6 @@ function packSuggestions(tempF, condition) {
   }
 
   return [...new Set(items)];
-}
-
-function isSunnyCondition(condition) {
-  const c = String(condition || "").toLowerCase();
-  return c.includes("sunny") || c.includes("clear") || c.includes("sun");
-}
-
-function sunnyScore(condition) {
-  const c = String(condition || "").toLowerCase();
-  if (c.includes("sunny") || c.includes("clear")) return 2;
-  if (c.includes("partly")) return 1;
-  return 0;
-}
-
-function getTopSunnyWarmNeighborhoods(items, limit = 10) {
-  return items
-    .filter((n) => Number.isFinite(n.temperature) && n.temperature >= 68)
-    .sort((a, b) => {
-      const sunDiff = sunnyScore(b.condition) - sunnyScore(a.condition);
-      if (sunDiff !== 0) return sunDiff;
-      return b.temperature - a.temperature;
-    })
-    .slice(0, limit);
 }
 
 function renderNeighborhoodCard(data) {
@@ -497,51 +469,6 @@ async function hydrateNeighborhoodTemperatures() {
   neighborhoods = hydrated;
 }
 
-async function applyFilters() {
-  const sunnyWarmOnly = Boolean(ui.sunnyWarmToggle.checked);
-
-  let filtered = sunnyWarmOnly
-    ? getTopSunnyWarmNeighborhoods(neighborhoods, 10)
-    : [...neighborhoods].sort((a, b) => {
-        const aTemp = Number.isFinite(a.temperature) ? a.temperature : -999;
-        const bTemp = Number.isFinite(b.temperature) ? b.temperature : -999;
-        return bTemp - aTemp;
-      });
-
-  if (sunnyWarmOnly && filtered.length === 0) {
-    await fetchAllWeather();
-    neighborhoods = enrichNeighborhoodsWithIndexedWeather(neighborhoods);
-    await hydrateNeighborhoodTemperatures();
-    filtered = getTopSunnyWarmNeighborhoods(neighborhoods, 10);
-  }
-
-  filteredNeighborhoods = filtered;
-  drawMarkers(filtered);
-  if (filtered.length) {
-    fitMap(filtered);
-  }
-
-  ui.filterCount.textContent = sunnyWarmOnly
-    ? `Top ${filtered.length} sunny + warm neighborhoods (68°F+)`
-    : "Showing all neighborhoods";
-
-  renderFinderResults(filtered);
-}
-
-function renderFinderResults(items) {
-  if (!items.length) {
-    ui.finderResults.innerHTML = "<li>No neighborhoods match this search/filter.</li>";
-    return;
-  }
-
-  ui.finderResults.innerHTML = items
-    .map((n) => {
-      const temp = Number.isFinite(n.temperature) ? `${Math.round(n.temperature)}°F` : "--";
-      return `<li><button class="result-btn" data-neighborhood="${n.name}">${n.name}</button><span class="temp">${temp}</span></li>`;
-    })
-    .join("");
-}
-
 function drawMarkers(items) {
   markersLayer.clearLayers();
   markerByNeighborhood = new Map();
@@ -586,7 +513,9 @@ async function refresh() {
     const items = await fetchNeighborhoods();
     await fetchAllWeather();
     neighborhoods = enrichNeighborhoodsWithIndexedWeather(items);
-    await applyFilters();
+    await hydrateNeighborhoodTemperatures();
+    drawMarkers(neighborhoods);
+    fitMap(neighborhoods);
 
     if (neighborhoods.length) {
       const withWeather = await withFreshWeather(neighborhoods[0]);
@@ -603,8 +532,7 @@ async function refresh() {
 
 map.on("click", async (event) => {
   const { lat, lng } = event.latlng;
-  const sourceSet = filteredNeighborhoods.length ? filteredNeighborhoods : neighborhoods;
-  if (!sourceSet.length) {
+  if (!neighborhoods.length) {
     ui.name.textContent = "No neighborhood match";
     ui.temp.textContent = "--";
     ui.tempUnit.textContent = "";
@@ -616,9 +544,9 @@ map.on("click", async (event) => {
   }
 
   const nearest = (() => {
-    let nearestItem = sourceSet[0];
+    let nearestItem = neighborhoods[0];
     let minDist = distanceSq(lat, lng, nearestItem.lat, nearestItem.lng);
-    for (const n of sourceSet) {
+    for (const n of neighborhoods) {
       const d = distanceSq(lat, lng, n.lat, n.lng);
       if (d < minDist) {
         nearestItem = n;
@@ -634,15 +562,4 @@ map.on("click", async (event) => {
 });
 
 ui.refreshBtn.addEventListener("click", refresh);
-ui.searchBtn.addEventListener("click", async () => {
-  await applyFilters();
-});
-ui.finderResults.addEventListener("click", async (event) => {
-  const btn = event.target.closest(".result-btn");
-  if (!btn) return;
-  const picked = filteredNeighborhoods.find((n) => n.name === btn.dataset.neighborhood);
-  if (!picked) return;
-  const withWeather = await withFreshWeather(picked);
-  selectNeighborhood(withWeather);
-});
 refresh();

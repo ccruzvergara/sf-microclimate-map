@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SF Microclimate Map</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -15,50 +21,38 @@
   <body>
     <main class="app-shell">
       <header class="app-header">
-        <h1>San Francisco Microclimate Map</h1>
-        <p>Click a marker or anywhere on the map to see what to wear right now.</p>
+        <p class="eyebrow">SF WEATHER SNAPSHOT</p>
+        <h1>Find your neighborhood's real weather before you head out.</h1>
+        <p class="subhead">Click the map to see current temperature and what to wear right now.</p>
       </header>
 
       <section class="layout">
-        <div id="map" aria-label="Map of San Francisco neighborhoods"></div>
+        <div class="map-wrap">
+          <div id="map" aria-label="Map of San Francisco neighborhoods"></div>
+        </div>
 
         <aside class="panel" aria-live="polite">
-          <div class="finder">
-            <span class="label">Find Neighborhoods</span>
-            <label class="finder-toggle">
-              <input id="sunny-warm-toggle" type="checkbox" />
-              Sunny + warm spots (68°F or warmer)
-            </label>
-            <div class="finder-row">
-              <button id="finder-search-btn" type="button">Search</button>
-            </div>
-            <p id="filter-count">Showing all neighborhoods</p>
-            <ul id="finder-results" class="finder-results">
-              <li>Click Search to see neighborhoods by warmth.</li>
-            </ul>
-          </div>
-
           <h2 id="selected-name">Pick a neighborhood</h2>
           <p class="temperature"><span id="selected-temp">--</span><span id="temp-unit">°F</span></p>
-          <p id="selected-condition">Current conditions will appear here.</p>
+          <p id="selected-condition" class="condition-text">Current conditions will appear here.</p>
 
           <div class="meta-grid">
-            <div>
+            <div class="stat">
               <span class="label">Coordinates</span>
               <span id="selected-coords">--</span>
             </div>
-            <div>
+            <div class="stat">
               <span class="label">Last updated</span>
               <span id="selected-updated">--</span>
             </div>
           </div>
 
-          <h3>What to wear / pack</h3>
+          <h3>What to wear</h3>
           <ul id="packing-list" class="packing-list">
             <li>Select a neighborhood to get recommendations.</li>
           </ul>
 
-          <button id="refresh-btn" type="button">Refresh live temperatures</button>
+          <button id="refresh-btn" type="button">Refresh temperatures</button>
           <p class="note">
             Data source:
             <a href="https://microclimates.solofounders.com/" target="_blank" rel="noreferrer">microclimates.solofounders.com</a>
