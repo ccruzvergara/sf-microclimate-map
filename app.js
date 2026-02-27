@@ -231,10 +231,16 @@ function packSuggestions(tempF, condition) {
   } else if (tempF >= 51 && tempF <= 60) {
     items.push("Layers layers layers, you need a jacket, warm sweater, and t-shirt!");
   } else if (tempF >= 61 && tempF <= 65) {
-    items.push("Almost warm, bring out the sunnies!");
-  } else if (tempF >= 66 && tempF <= 72) {
-    items.push("Lucky to live in SF, we have the perfect weather. Wear what you want!");
-  } else if (tempF >= 73) {
+    items.push("Almost warm, bring out the sunnies! You'll want jeans, t-shirt, sweater, or light jacket. You probably won't sweat going up those hills.");
+  } else if (tempF >= 66 && tempF <= 69) {
+    items.push("Make sure to have a short sleeve tee or tank on under your sweater or jacket. You'll start sweating going up those hills.");
+  } else if (tempF >= 70 && tempF <= 72) {
+    items.push("What a gorgeous day! Honestly, what can't you wear in this weather?");
+  } else if (tempF >= 73 && tempF <= 74) {
+    items.push("What are we? east bay? starting to get a lil toasty around here");
+  } else if (tempF > 75) {
+    items.push("It's hot, what's happening? Pull out the tank and shorts for this unseasonably warm day.");
+  } else if (tempF > 74) {
     items.push("It's hot, what's happening? Pull out the tank and shorts for this unseasonably warm day.");
   } else {
     items.push("Bring a light layer.");
